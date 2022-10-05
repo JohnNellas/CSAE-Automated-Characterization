@@ -13,16 +13,16 @@ import pandas as pd
 # =========================================
 
 parser = argparse.ArgumentParser(
-    description="Inference Image Labels Contained in a directory using Convolutional Supervised Autoencoder")
+    description="Automated Skin Lesion Characterization and COVID-19 Diagnosis from CT Scans using Convolutional Supervised Autoencoders.")
 
 parser.add_argument("-p", "--path", required=True, metavar="Path", type=str,
-                    help="Path to the directory containing the dataset")
+                    help="Path to the directory containing the dataset.")
 parser.add_argument("-d", "--dataset", required=True, metavar="Dataset", type=str,
-                    choices=["covid", "skin"], help="Type of data contained in the dataset")
+                    choices=["covid", "skin"], help=f"Type of data contained in the dataset. Available choices: {', '.join(['covid', 'skin'])} (covid: COVID-19 CT Scans, skin: Skin Lesions).")
 parser.add_argument("-l", "--latent-space-dimensions", required=True, metavar="Latent Space Dimensions", type=int,
-                    choices=[2, 10], help="The number of dimensions in the latent space")
+                    choices=[2, 10], help=f"The number of dimensions in the latent space. Available choices: {', '.join(['2', '10'])}.")
 parser.add_argument("-b", "--batch-size", required=False, metavar="Batch Size", type=int,
-                    default=64, help="The Batch Size for data loading")
+                    default=64, help="The Batch Size for data loading (Not Required Argument, default value is 64).")
 args = parser.parse_args()
 
 # use the appropriate device (cpu or gpu)
