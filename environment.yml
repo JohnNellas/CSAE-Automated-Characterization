@@ -1,13 +1,14 @@
-name: csae_env
+name: csae_environment
 channels:
   - defaults
+  - anaconda 
+  - pytorch
 dependencies:
   - python=3.8
-  - torchaudio
-  - torchvision
-  - cudatoolkit=10.2
   - pytorch
+  - cudatoolkit=10.2
+  - torchvision
+  - torchaudio
   - numpy
   - pandas
   - openpyxl
-prefix: /home/nellas/anaconda3/envs/csae_env
