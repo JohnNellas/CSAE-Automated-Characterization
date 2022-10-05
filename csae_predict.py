@@ -53,7 +53,7 @@ else:
         torchvision.transforms.ToTensor()
     ])
 
-entire_dataset = cm.load_dataset_mod.LoadDataset(
+entire_dataset = cm.LoadDataset(
     root_dir=args.path, transform=preprocessing)
 
 image_shape = list(entire_dataset[0][0].shape)
