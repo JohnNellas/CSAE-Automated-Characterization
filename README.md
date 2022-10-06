@@ -34,7 +34,7 @@ optional arguments:
                         The Batch Size for data loading (Not Required Argument, default value is 64).
 ```
 
-## Example
+## Examples
 Utilize a pretrained CSAE with a 2 dimensional latent space to perform Automated Skin Lesion Characterization (```skin``` option) for the images contained in the directory ```/path/to/images```.
 
 ```
