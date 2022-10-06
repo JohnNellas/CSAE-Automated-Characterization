@@ -6,7 +6,13 @@ import os
 
 
 def get_activation_function(activation_function_name: str):
-
+    """
+    A function that returns the desired activation function.
+    
+    Args:
+    activation_function_name: The name of the activation function. Available Choices: relu, gelu, hs.
+    """
+    
     assert isinstance(activation_function_name, str)
     activation = None
     if activation_function_name == "relu":
@@ -22,41 +28,50 @@ class LoadDataset(torch.utils.data.Dataset):
 
     def __init__(self, root_dir, transform=None):
         """
+        A Class that loads a dataset of images contained in a directory.
+        
         Args:
-            root_dir: The path to the directory that contains the dataset
-            csv_file: The path to the csv file that contained the dataset's metadata
-            transform: transforms that will be applied to the images
+            root_dir: The path to the directory containing the dataset.
+            transform: Transforms that will be applied to the images.
         """
         super(LoadDataset, self).__init__()
         self.root_dir = root_dir
         self.transform = transform
         self.filenames = np.array(os.listdir(root_dir), dtype="object")
         
-        
-
     def __len__(self):
         return len(self.filenames)
 
     def __getitem__(self, idx):
         if torch.is_tensor(idx):
             idx = idx.to_list()
-            
+        
+        # load the image
         image_path = os.path.join(
             self.root_dir, self.filenames[idx])
-
         img = PIL.Image.open(image_path)
+        
+        # get the corresponding filename of the image
         filename =  self.filenames[idx]
         
+        # apply the image transformation if specified        
         if self.transform is not None:
-            # following the way that torchvision.datasets.MNIST handles the alternative case
-            # in order to convert to tensor, let the user choose the corresponding transform.
             img = self.transform(img) 
-
+        
         return (img, filename)
 
 
 class Encoder(torch.nn.Module):
     def __init__(self, input_shape, latent_space_dims, activation_name="gelu", num_conv_blocks=3):
+        """
+        A class that constructs the Encoder Network of CSAE.
+        
+        Args:
+        input_shape: the shape of an input image in channels last format.
+        latent_space_dims: the number of dimensions in the latent space.
+        activation_name: The name of the activation function utilized in the Network (last layer not included).
+        num_conv_blocks: The number of convolution layers contained in a convolution block.
+        """
         super(Encoder, self).__init__()
 
         self.num_conv_blocks = num_conv_blocks
@@ -68,7 +83,6 @@ class Encoder(torch.nn.Module):
 
         # Convolutional Module
         self.enc_conv = torch.nn.Sequential(
-            # conv
             self.create_convolution_block(input_filter=self.input_shape[-1],
                                           containing_filters=64,
                                           kernel_size=(5, 5),
@@ -76,10 +90,7 @@ class Encoder(torch.nn.Module):
                                           padding=2,
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-            # downscale 64x64
             torch.nn.MaxPool2d(kernel_size=(2, 2), stride=2),
-
-            # conv
             self.create_convolution_block(input_filter=64,
                                           containing_filters=64,
                                           kernel_size=(5, 5),
@@ -87,33 +98,21 @@ class Encoder(torch.nn.Module):
                                           padding=2,
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-
-            # downscale 32x32
             torch.nn.MaxPool2d(kernel_size=(2, 2), stride=2),
-
-            # conv
             self.create_convolution_block(input_filter=64,
                                           containing_filters=64,
                                           kernel_size=(3, 3),
                                           stride=(1, 1),
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-
-            # downscale 16x16
             torch.nn.MaxPool2d(kernel_size=(2, 2), stride=2),
-
-            # conv
             self.create_convolution_block(input_filter=64,
                                           containing_filters=128,
                                           kernel_size=(3, 3),
                                           stride=(1, 1),
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-
-            # downscale 8x8
             torch.nn.MaxPool2d(kernel_size=(2, 2), stride=2),
-
-            # conv
             self.create_convolution_block(input_filter=128,
                                           containing_filters=128,
                                           kernel_size=(3, 3),
@@ -121,17 +120,23 @@ class Encoder(torch.nn.Module):
                                           num_conv_blocks=self.num_conv_blocks
                                           )
         )
-
-        flatten_out_shape = (
-            self.input_shape[0]//(2**4)) * (self.input_shape[1]//(2**4)) * 128
-
         # NN Module
         self.enc_nn = torch.nn.Sequential(
             torch.nn.Linear(128, latent_space_dims)
         )
 
-    def create_convolution_block(self, input_filter, containing_filters, kernel_size, stride, padding=1, num_conv_blocks=3):\
+    def create_convolution_block(self, input_filter, containing_filters, kernel_size, stride, padding=1, num_conv_blocks=3):
+        """
+        A Method that constructs a convolution block.
         
+        Args:
+        input_filter: the number of input filters.
+        containing_filters: the number of filters that will be utilized in each convolution layer.
+        kernel_size : the kernel size.
+        stride: the desired stride that will be used.
+        padding: The desired padding that will be used.
+        num_conv_blocks: The number of convolution layers contained in a convolution block.
+        """
         layers = list()
         for conv_block_id in range(num_conv_blocks):
             if not layers:
@@ -160,6 +165,14 @@ class Encoder(torch.nn.Module):
 
 class Classifier(torch.nn.Module):
     def __init__(self, latent_space_dims, number_of_classes, activation_name="gelu"):
+        """
+        A class that constructs the Classifier Network of CSAE.
+        
+        Args:
+        latent_space_dims: the number of dimensions in the latent space.
+        number_of_classes: the number of classes in the dataset.
+        activation_name: The name of the activation function utilized in the Network (last layer not Included).
+        """
         super(Classifier, self).__init__()
 
         self.activation_name = activation_name
@@ -176,6 +189,15 @@ class Classifier(torch.nn.Module):
 
 class Decoder(torch.nn.Module):
     def __init__(self, input_shape, enc_out, activation_name="gelu", num_conv_blocks=3):
+        """
+        A class that constructs the Decoder Network of CSAE.
+        
+        Args:
+        input_shape: the shape of an input image in channels last format.
+        enc_out: the number of dimensions in the latent space.
+        activation_name: The name of the activation function utilized in the Network (last layer not included).
+        num_conv_blocks: The number of convolution layers contained in a convolution block.
+        """
         super(Decoder, self).__init__()
 
         self.activation_name = activation_name
@@ -203,36 +225,28 @@ class Decoder(torch.nn.Module):
 
         # NN module
         self.dec_conv = torch.nn.Sequential(
-
-            # conv
             self.create_convolution_block(input_filter=128,
                                           containing_filters=128,
                                           kernel_size=(3, 3),
                                           stride=(1, 1),
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-            # upsample 16x16
             torch.nn.ConvTranspose2d(128, 128, (3, 3),
                                      stride=(2, 2),
                                      padding=1, output_padding=1),
             torch.nn.BatchNorm2d(128),
             get_activation_function(self.activation_name),
-
-            # conv
             self.create_convolution_block(input_filter=128,
                                           containing_filters=128,
                                           kernel_size=(3, 3),
                                           stride=(1, 1),
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-            # upsample 32x32
             torch.nn.ConvTranspose2d(128, 64, (3, 3),
                                      stride=(2, 2),
                                      padding=1, output_padding=1),
             torch.nn.BatchNorm2d(64),
             get_activation_function(self.activation_name),
-
-            # conv
             self.create_convolution_block(input_filter=64,
                                           containing_filters=64,
                                           kernel_size=(5, 5),
@@ -240,13 +254,11 @@ class Decoder(torch.nn.Module):
                                           padding=2,
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-            # upsample 64x64
             torch.nn.ConvTranspose2d(64, 64, (5, 5),
                                      stride=(2, 2),
                                      padding=2, output_padding=1),
             torch.nn.BatchNorm2d(64),
             get_activation_function(self.activation_name),
-
             self.create_convolution_block(input_filter=64,
                                           containing_filters=64,
                                           kernel_size=(5, 5),
@@ -255,13 +267,11 @@ class Decoder(torch.nn.Module):
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
 
-            # upsample 128x128
             torch.nn.ConvTranspose2d(64, 64, (5, 5),
                                      stride=(2, 2),
                                      padding=2, output_padding=1),
             torch.nn.BatchNorm2d(64),
             get_activation_function(self.activation_name),
-
             self.create_convolution_block(input_filter=64,
                                           containing_filters=64,
                                           kernel_size=(5, 5),
@@ -269,8 +279,6 @@ class Decoder(torch.nn.Module):
                                           padding=2,
                                           num_conv_blocks=self.num_conv_blocks
                                           ),
-
-            # output layer
             torch.nn.Conv2d(
                 in_channels=64,
                 out_channels=self.input_shape[-1],
@@ -280,8 +288,18 @@ class Decoder(torch.nn.Module):
             torch.nn.Sigmoid()
         )
 
-    def create_convolution_block(self, input_filter, containing_filters, kernel_size, stride, padding=1, num_conv_blocks=3):\
+    def create_convolution_block(self, input_filter, containing_filters, kernel_size, stride, padding=1, num_conv_blocks=3):
+        """
+        A Method that constructs a convolution block.
         
+        Args:
+        input_filter: the number of input filters.
+        containing_filters: the number of filters that will be utilized in each convolution layer.
+        kernel_size : the kernel size.
+        stride: the desired stride that will be used.
+        padding: The desired padding that will be used.
+        num_conv_blocks: The number of convolution layers contained in a convolution block.
+        """
         layers = list()
         for conv_block_id in range(num_conv_blocks):
             if not layers:
@@ -309,6 +327,14 @@ class Decoder(torch.nn.Module):
 
 class CSAE(torch.nn.Module):
     def __init__(self, encoder, decoder, classifier):
+        """
+        A class that constructs the Convolutional Supervised Autoencoder.
+        
+        Args:
+        encoder: The Encoder Network.
+        decoder: The Decoder Network.
+        classifier: The Classifier Network.
+        """
         super(CSAE, self).__init__()
 
         # the encoder network

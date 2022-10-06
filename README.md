@@ -41,6 +41,12 @@ Utilize a pretrained CSAE with a 2 dimensional latent space to perform Automated
 python3 csae_predict -p /path/to/images -d skin -l 2
 ```
 
+Employ a pretrained CSAE with a 2 dimensional latent space to perform Automated COVID-19 diagnosis from CT-Scans (```covid``` option) for the images contained in the directory ```/path/to/images```.
+
+```
+python3 csae_predict -p /path/to/images -d covid -l 2
+```
+
 ## Execution Details
 
 The script execution predicts the label of each image contained in the specified as argument directory, and creates an excel file that contain the results as pairs of filenames and predicted labels. This excel file is stored under the ```classification_results_csae/classification_results_{datasetName}/classification_results_ls_{latentSpaceDimensions}_dimensions```, with the filename ```results.xlsx```, where the required directories are automatically created during the script execution.
